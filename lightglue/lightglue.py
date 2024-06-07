@@ -228,10 +228,10 @@ def sigmoid_log_double_softmax(sim: torch.Tensor, z0: torch.Tensor, z1: torch.Te
     scores0 = F.log_softmax(sim, 2)
     scores1 = F.log_softmax(sim.transpose(-1, -2).contiguous(), 2).transpose(-1, -2)
 
-    # Create scores tensor
-    scores = sim.new_full((b, m + 1, n + 1), 0)
+    # Create scores tensor with zero values initially
+    scores = torch.zeros((b, m + 1, n + 1), device=sim.device)
 
-    # Merge the scores0, scores1, and certainties into scores without slice assignment
+    # Assign the main part of the scores tensor without slicing
     scores_main = scores0 + scores1 + certainties
     scores[:, :m, :n] = scores_main
 
@@ -240,10 +240,11 @@ def sigmoid_log_double_softmax(sim: torch.Tensor, z0: torch.Tensor, z1: torch.Te
     last_row_scores = F.logsigmoid(-z1.squeeze(-1)).unsqueeze(1)
 
     # Update last column and row in scores
-    scores[:, :-1, -1:] = last_col_scores
-    scores[:, -1:, :-1] = last_row_scores
+    scores[:, :m, n] = last_col_scores.squeeze(2)
+    scores[:, m, :n] = last_row_scores.squeeze(1)
 
     return scores
+
 
 
 class MatchAssignment(nn.Module):
